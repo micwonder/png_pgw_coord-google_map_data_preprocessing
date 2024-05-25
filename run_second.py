@@ -11,9 +11,8 @@ OLD_CHAR_DEGREE = "Â°"
 CHAR_DEGREE = "°"
 
 
-def crop_image(src_img: str, save_path: str, src_point: tuple, dst_point: tuple):
+def crop_image(img, save_path: str, src_point: tuple, dst_point: tuple):
 
-    img = cv2.imread(src_img)
     src_h, src_w, _ = img.shape
 
     src_topleft, src_bottomright = src_point
@@ -56,7 +55,7 @@ def crop_image(src_img: str, save_path: str, src_point: tuple, dst_point: tuple)
         cv2.imwrite(save_path, cropped)
         return True
     except Exception as e:
-        # print(e)
+        print(e)
         return False
 
 
@@ -140,49 +139,84 @@ def main_one_process():
     len_files = 777600
 
     final_status = []
+    final_coords = []
 
     count = 0
     for coord_file in os.listdir(coord_path):
         sub_dir = os.path.join(coord_path, coord_file)
         if os.path.isdir(sub_dir):
-            for filename in os.listdir(sub_dir):
+            final_coords += os.listdir(sub_dir)
 
-                count = count + 1
-                is_success = False
+    print(len(final_coords))
+    is_success = False
 
-                img_name = filename[:-4] + ".jpg"
-                save_path = os.path.join(out_path, img_name)
-                if is_exist(save_path):
-                    is_success = True
+    for img in os.listdir(img_path):
+        print(img)
+        src_img = cv2.imread(os.path.join(img_path, img))
 
-                else:
-                    dst_point = get_latlot(coord_name=filename)
+        src_point = get_latlot(img_name=img)
 
-                    for img in os.listdir(img_path):
-                        src_point = get_latlot(img_name=img)
+        for coord in final_coords:
+            count = count + 1
+            dst_point = get_latlot(coord_name=coord)
 
-                        if is_overlay(src_point, dst_point):
-                            is_success = crop_image(
-                                os.path.join(img_path, img),
-                                save_path,
-                                src_point,
-                                dst_point,
-                            )
-                            if is_success:
-                                command = f"ren { os.path.join(out_path, correct_degree_unicode(img_name)) } { img_name }"
-                                os.system(command)
+            img_name = coord[:-4] + ".jpg"
+            save_path = os.path.join(out_path, img_name)
 
-                logger = f">>>>>>>>>>>>>>>>>>>> { count }/{ len_files } -------------> { is_success } \n"
-                final_status.append(logger)
-                final_status.append(f"{ sub_dir } \\ { filename }")
-                final_status.append("\n\n\n")
-                # print(logger)
+            if is_exist(save_path):
+                is_success = True
 
-                with open("final_status.txt", "w", encoding="utf-8") as file:
-                    file.writelines(final_status)
+            if is_overlay(src_point, dst_point):
+                is_success = crop_image(src_img, save_path, src_point, dst_point)
+                if is_success:
+                    command = f"ren { os.path.join(out_path, correct_degree_unicode(img_name)) } { img_name }"
+                    os.system(command)
+
+                    logger = f">>>>>>>>>>>>>>>>>>>> { count } -------------> { is_success } \n"
+                    final_status.append(logger)
+                    final_status.append(f"{ sub_dir } \\ { img }")
+                    final_status.append("\n\n\n")
+                    print(logger)
+
+                    with open("final_status.txt", "w", encoding="utf-8") as file:
+                        file.writelines(final_status)
 
     print(count)
 
 
 if __name__ == "__main__":
     main_one_process()
+
+# def run():
+#     out_path = "fragments_new"
+#     img_path = "output"
+#     coord_path = "coordinates"
+
+#     os.makedirs(out_path, exist_ok=True)
+
+#     coord_info = []
+#     for coord_file in os.listdir(coord_path):
+#         for sub_dir in [os.path.join(coord_path, coord_file)]:
+#             if os.path.isdir(sub_dir):
+#                 for filename in os.listdir(sub_dir):
+#                     img_name = filename[:-4] + ".jpg"
+#                     save_path = os.path.join(out_path, img_name)
+#                     if is_exist(save_path):
+#                         coord_info.append((filename, img_name, save_path))
+
+#     print(len(coord_info))
+
+#     map_img_info = [(img, os.path.join(img_path, img)) for img in os.listdir(img_path)]
+
+#     print(len(map_img_info))
+
+#     # process_coordinate_file(coord_info, map_img_info)
+
+#     # with ProcessPoolExecutor(max_workers=len(map_img_info)) as executor:
+#     #     process_partial = partial()
+
+#     # process_coordinate_file()
+
+
+# if __name__ == "__main__":
+#     run()
