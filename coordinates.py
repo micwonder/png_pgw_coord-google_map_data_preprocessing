@@ -18,7 +18,6 @@ def get_latlot(img_name: str = None, coord_name: str = None):
         parts = [part for part in coord_name[:-4].split("_")]
         # Convert the non-empty parts to float
         upper_lat, upper_lot, lower_lat, lower_lot = map(dms_to_float, parts)
-        print(upper_lat)
         return (upper_lat, upper_lot), (lower_lat, lower_lot)
     else:
         return None
