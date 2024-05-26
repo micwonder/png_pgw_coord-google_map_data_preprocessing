@@ -1,14 +1,26 @@
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
+import logging
 import os
 import cv2
 import time
 import glob
 import argparse
 
+from tqdm import tqdm
+
 LAT = 0
 LOT = 1
 
 OLD_CHAR_DEGREE = "Â°"
 CHAR_DEGREE = "°"
+
+# Set up logging
+logging.basicConfig(
+    filename="process.log",
+    level=logging.INFO,
+    format="%(asctime)s:%(levelname)s:%(message)s",
+)
 
 
 def crop_image(img, save_path: str, src_point: tuple, dst_point: tuple):
@@ -126,97 +138,46 @@ def correct_degree_unicode(filename: str):
     return filename
 
 
-def main_one_process():
+def process_image_with_coords(img, img_path, out_path, final_coords):
+    logging.info(f"Processing image: {img}")
+    src_img = cv2.imread(os.path.join(img_path, img))
+    src_point = get_latlot(img_name=img)
 
+    for coord in final_coords:
+        dst_point = get_latlot(coord_name=coord)
+        img_name = coord[:-4] + ".jpg"
+        save_path = os.path.join(out_path, img_name)
+
+        if not is_exist(save_path) and is_overlay(src_point, dst_point):
+            success = crop_image(src_img, save_path, src_point, dst_point)
+            if success:
+                command = f"ren { os.path.join(out_path, correct_degree_unicode(img_name)) } { img_name }"
+                os.system(command)
+                logging.info(f"Successfully processed {img_name}")
+
+
+def main_one_process():
     out_path = "fragments"
     img_path = "output"
     coord_path = "coordinates"
 
     os.makedirs(out_path, exist_ok=True)
 
-    # files = glob.glob(f'{coord_path}/*/*.txt')
-    # len_files = len(files)
-    len_files = 777600
+    final_coords = [file for _, _, files in os.walk(coord_path) for file in files]
 
-    final_status = []
-    final_coords = []
+    img_files = os.listdir(img_path)
+    logging.info(f"Total images: {len(img_files)}")
+    logging.info(f"Total coordinates: {len(final_coords)}")
 
-    count = 0
-    for coord_file in os.listdir(coord_path):
-        sub_dir = os.path.join(coord_path, coord_file)
-        if os.path.isdir(sub_dir):
-            final_coords += os.listdir(sub_dir)
-
-    print(len(final_coords))
-    is_success = False
-
-    for img in os.listdir(img_path):
-        print(img)
-        src_img = cv2.imread(os.path.join(img_path, img))
-
-        src_point = get_latlot(img_name=img)
-
-        for coord in final_coords:
-            count = count + 1
-            dst_point = get_latlot(coord_name=coord)
-
-            img_name = coord[:-4] + ".jpg"
-            save_path = os.path.join(out_path, img_name)
-
-            if is_exist(save_path):
-                is_success = True
-
-            if is_overlay(src_point, dst_point):
-                is_success = crop_image(src_img, save_path, src_point, dst_point)
-                if is_success:
-                    command = f"ren { os.path.join(out_path, correct_degree_unicode(img_name)) } { img_name }"
-                    os.system(command)
-
-                    logger = f">>>>>>>>>>>>>>>>>>>> { count } -------------> { is_success } \n"
-                    final_status.append(logger)
-                    final_status.append(f"{ sub_dir } \\ { img }")
-                    final_status.append("\n\n\n")
-                    print(logger)
-
-                    with open("final_status.txt", "w", encoding="utf-8") as file:
-                        file.writelines(final_status)
-
-    print(count)
+    with ProcessPoolExecutor(max_workers=len(img_files)) as executor:
+        process_partial = partial(
+            process_image_with_coords,
+            img_path=img_path,
+            out_path=out_path,
+            final_coords=final_coords,
+        )
+        list(tqdm(executor.map(process_partial, img_files), total=len(img_files)))
 
 
 if __name__ == "__main__":
     main_one_process()
-
-# def run():
-#     out_path = "fragments_new"
-#     img_path = "output"
-#     coord_path = "coordinates"
-
-#     os.makedirs(out_path, exist_ok=True)
-
-#     coord_info = []
-#     for coord_file in os.listdir(coord_path):
-#         for sub_dir in [os.path.join(coord_path, coord_file)]:
-#             if os.path.isdir(sub_dir):
-#                 for filename in os.listdir(sub_dir):
-#                     img_name = filename[:-4] + ".jpg"
-#                     save_path = os.path.join(out_path, img_name)
-#                     if is_exist(save_path):
-#                         coord_info.append((filename, img_name, save_path))
-
-#     print(len(coord_info))
-
-#     map_img_info = [(img, os.path.join(img_path, img)) for img in os.listdir(img_path)]
-
-#     print(len(map_img_info))
-
-#     # process_coordinate_file(coord_info, map_img_info)
-
-#     # with ProcessPoolExecutor(max_workers=len(map_img_info)) as executor:
-#     #     process_partial = partial()
-
-#     # process_coordinate_file()
-
-
-# if __name__ == "__main__":
-#     run()

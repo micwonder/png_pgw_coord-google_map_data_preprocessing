@@ -3,6 +3,10 @@
 /fragments
 /maps
 /output
+__pycache__/
 *.zip
 *.rar
 *.txt
+*.log
+.env
+/env
