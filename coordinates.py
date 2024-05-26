@@ -10,7 +10,7 @@ def get_latlot(img_name: str = None, coord_name: str = None):
         # Split img_name and filter out empty strings
         parts = [part for part in img_name[:-4].split("_") if part]
         # Convert the non-empty parts to float
-        lower_lat, upper_lot, _, upper_lat, lower_lot = map(float, parts)
+        lower_lat, upper_lot, upper_lat, lower_lot = map(float, parts)
 
         return (upper_lat, upper_lot), (lower_lat, lower_lot)
     elif coord_name:
